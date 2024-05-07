@@ -1,0 +1,33 @@
+# Compiled objects and binaries
+*.o
+*.so
+*.a
+*.dll
+*.out
+*.exe
+*.elf
+
+# Ignore build directories
+.vscode/
+build/
+
+# Ignore any logs or temporary files
+*.log
+*.tmp
+
+# Ignore any user-specific files or settings
+*.user
+*.suo
+*.sln.cache
+*.sln.docstates
+*.suo
+*.userprefs
+
+# Ignore any dependency directories
+dependencies/
+
+# Ignore any IDE specific files
+.idea/
+
+# Ignore any backup files
+*~
