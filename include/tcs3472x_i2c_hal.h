@@ -32,7 +32,7 @@ int8_t tcs3472x_i2c_hal_init(int device_address);
  * @param length Number of bytes in the buffer to write to the I2C bus.
  * @return Returns 0 on successful write, or -1 if an error occurs.
  */
-int8_t tcs3472x_i2c_hal_write(const uint8_t *buffer, uint16_t length);
+int8_t tcs3472x_i2c_hal_write(uint8_t *buffer, uint16_t length);
 
 /**
  * @brief Reads data from the I2C bus connected to the TCS3472x sensor.
