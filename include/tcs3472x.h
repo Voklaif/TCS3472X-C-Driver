@@ -45,6 +45,7 @@ typedef union {
 
 void tcs3472x_init(void); ///< Initializes the TCS3472x sensor.
 uint8_t tcs3472x_get_enable(void); ///< Retrieves the current state of the enable register.
+uint8_t tcs3472x_get_id(void); ///< Retrieves the ID of the TCS3472x sensor.
 
 // uint8_t tcs3472x_get_device_id(void); TODO
 

@@ -90,6 +90,28 @@ uint8_t tcs3472x_get_enable(void) {
 }
 
 /**
+ * @brief Retrieves the ID of the TCS3472x sensor.
+ *
+ * This function reads the ID register of the TCS3472x sensor to retrieve its unique identifier.
+ * It first writes the command to access the ID register, then reads the register's value via I2C.
+ * If the read operation fails, an error message is logged, and the function returns 0.
+ *
+ * @return The ID of the TCS3472x sensor. Returns 0 if the read operation fails.
+ */
+uint8_t tcs3472x_get_id(void) {
+	uint8_t id = 0;
+
+	_write_command_register(ID_REGISTER, REPEAT_BYTE);
+
+    if (tcs3472x_i2c_hal_read(&id, 1) < 0) {
+        LOG_ERROR("Failed to read ID register.\n");
+        return 0;
+    }
+    return id;
+}
+
+
+/**
  * Retrieves all color channel data from the TCS3472x sensor.
  *
  * @param buff Pointer to an array where the color data will be stored.
