@@ -25,8 +25,8 @@ Before you begin, ensure you have the following tools installed on your system:
 To get started with the TCS34725 C Driver, clone the repository to your local machine:
 
 ```bash
-git clone https://github.com/voklaif/TCS34725-C-Driver.git
-cd TCS34725-C-Driver
+git clone git@github.com:voklaif/TCS3472X-C-Driver.git
+cd TCS3472X-C-Driver
 ```
 
 ### Building the Project
