@@ -51,6 +51,9 @@ cd build
 Documentation
 For more detailed information about the API and functionalities, please refer to the code documentation in the include directory.
 
+## STM32 Example Project
+For users who want to integrate the TCS3472x sensor with an STM32 platform, there is a separate repository containing an example project. You can find it here: [TCS3472x STM32 Example](https://github.com/Voklaif/TCS3472x_STM32).
+
 ## Current Status and Future Plans
 
 ### Current Status
