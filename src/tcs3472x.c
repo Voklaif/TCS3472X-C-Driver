@@ -11,8 +11,6 @@
 #include "tcs3472x.h"
 #include "tcs3472x_i2c_hal.h"
 
-#define LOG_ERROR(msg) fprintf(stderr, "Error: %s", msg)
-
 /**
  * Enum for command types used with the TCS3472x sensor.
  */
@@ -34,11 +32,18 @@ typedef union {
     uint8_t byte;             ///< Full byte representation of the command register for easy transmission.
 } command_register_t;
 
+// Magic numbers from datasheet
+const float INTEGRATION_TIME_MULTIPLIER = 2.4f;
+const uint16_t INTEGRATION_TIME_CONST = 256;
+const uint16_t INTEGRATION_TIME_SPECIAL_CASE = 700;
+
 static command_register_t command_register;
 
 // Function prototypes
 static uint16_t _get_color_data(uint8_t reg_address);
+float _calc_atime_in_milliseconds (uint8_t atime);
 void _write_command_register(uint8_t reg_address, command_type_t cmd_type);
+uint8_t _build_command_register(uint8_t reg_address, command_type_t cmd_type);
 
 /**
  * Writes a command to the command register of the TCS3472x sensor.
@@ -47,75 +52,107 @@ void _write_command_register(uint8_t reg_address, command_type_t cmd_type);
  * @param cmd_type The type of command being issued (repeat, auto-increment, special function).
  */
 void _write_command_register(uint8_t reg_address, command_type_t cmd_type) {
-    command_register.bits.cmd = 1;
-    command_register.bits.type = cmd_type;
-    command_register.bits.addr_sf = reg_address;
+
+    command_register.byte = _build_command_register(reg_address, cmd_type);
 
     if (tcs3472x_i2c_hal_write(&command_register.byte, 1) < 0) {
-        LOG_ERROR("Failed to write command register.\n");
+        LOG_ERROR("Failed to write command register.\r\n");
     }
+    LOG_DEBUG("reg_address = 0x%X\r\n", reg_address);
 }
 
-/**
- * Initializes the TCS3472x sensor by setting the power on and enabling RGB color detection.
- */
+
 void tcs3472x_init(void) {
     enable_register_t enable_register;
 
+    enable_register.bits.aien = 1;
+    enable_register.bits.wen = 1;
     enable_register.bits.aen = 1;
     enable_register.bits.pon = 1;
 
     _write_command_register(ENABLE_REGISTER, REPEAT_BYTE);
 
     if (tcs3472x_i2c_hal_write(&enable_register.byte, 1) < 0) {
-        LOG_ERROR("Failed to initialize TCS3472x sensor (set PON).\n");
+        LOG_ERROR("Failed to initialize TCS3472x sensor (set PON).\r\n");
     }
 }
 
-/**
- * Retrieves the current status of the enable register from the TCS3472x sensor.
- *
- * @return Current value of the enable register.
- */
 uint8_t tcs3472x_get_enable(void) {
     uint8_t enable = 0;
 
     _write_command_register(ENABLE_REGISTER, REPEAT_BYTE);
 
     if (tcs3472x_i2c_hal_read(&enable, 1) < 0) {
-        LOG_ERROR("Failed to read ENABLE register.\n");
+        LOG_ERROR("Failed to read ENABLE register.\r\n");
         return 0;
     }
     return enable;
 }
 
-/**
- * @brief Retrieves the ID of the TCS3472x sensor.
- *
- * This function reads the ID register of the TCS3472x sensor to retrieve its unique identifier.
- * It first writes the command to access the ID register, then reads the register's value via I2C.
- * If the read operation fails, an error message is logged, and the function returns 0.
- *
- * @return The ID of the TCS3472x sensor. Returns 0 if the read operation fails.
- */
 uint8_t tcs3472x_get_id(void) {
 	uint8_t id = 0;
 
 	_write_command_register(ID_REGISTER, REPEAT_BYTE);
 
     if (tcs3472x_i2c_hal_read(&id, 1) < 0) {
-        LOG_ERROR("Failed to read ID register.\n");
+        LOG_ERROR("Failed to read ID register.\r\n");
         return 0;
     }
     return id;
 }
 
+float tcs3472x_set_atime(float integration_time) {
+	const float MAX_INTEGRATION_TIME_ALLOWED = INTEGRATION_TIME_CONST * INTEGRATION_TIME_MULTIPLIER; // 614.4 milliseconds
+	uint8_t atime_reg = 0;
+	uint8_t send_data[2] = {0};
+	float actual_integration_time = 0;
 
-/**
- * Retrieves all color channel data from the TCS3472x sensor.
- *
- * @param buff Pointer to an array where the color data will be stored.
- */
+	if(integration_time >= MAX_INTEGRATION_TIME_ALLOWED) {
+		atime_reg = 0x00;
+		actual_integration_time = INTEGRATION_TIME_SPECIAL_CASE;
+	}
+	else {
+		atime_reg = INTEGRATION_TIME_CONST - (integration_time / INTEGRATION_TIME_MULTIPLIER);
+		actual_integration_time = _calc_atime_in_milliseconds(atime_reg);
+	}
+
+    command_register.byte = _build_command_register(ATIME_REGISTER, REPEAT_BYTE);
+
+    send_data[0] = command_register.byte;
+    send_data[1] = atime_reg;
+
+    if (tcs3472x_i2c_hal_write(send_data, 2) < 0) {
+        LOG_ERROR("Failed to set ATIME register.\r\n");
+        return -1;
+    }
+
+	// Returns actual value of atime in milliseconds
+	return actual_integration_time;
+}
+
+float tcs3472x_get_atime(void) {
+
+	uint8_t atime_reg = 0;
+	float atime_ms = 0;
+
+	_write_command_register(ATIME_REGISTER, REPEAT_BYTE);
+
+    if (tcs3472x_i2c_hal_read(&atime_reg, 1) < 0) {
+        LOG_ERROR("Failed to read ATIME register.\r\n");
+        return -1;
+    }
+
+    // Special case according to datasheet
+    if (atime_reg == 0) {
+    	atime_ms = INTEGRATION_TIME_SPECIAL_CASE;
+    }
+    // Calculate the integration time in milliseconds
+    else {
+    	atime_ms = _calc_atime_in_milliseconds(atime_reg);
+    }
+    return atime_ms;
+}
+
 void tcs3472x_get_all_colors_data(uint16_t *buff) {
     uint8_t data[8] = {0};  // 2 bytes for each color (clear, red, green, blue)
     uint16_t combined_data = 0;
@@ -133,40 +170,32 @@ void tcs3472x_get_all_colors_data(uint16_t *buff) {
     buff[3] = combined_data;
 }
 
-/**
- * Reads and returns the clear channel data from the sensor.
- *
- * @return The 16-bit clear channel data.
- */
 uint16_t tcs3472x_get_clear_data(void) {
     return _get_color_data(CDATAL_REGISTER);
 }
 
-/**
- * Reads and returns the red channel data from the sensor.
- *
- * @return The 16-bit red channel data.
- */
 uint16_t tcs3472x_get_red_data(void) {
     return _get_color_data(RDATAL_REGISTER);
 }
 
-/**
- * Reads and returns the green channel data from the sensor.
- *
- * @return The 16-bit green channel data.
- */
 uint16_t tcs3472x_get_green_data(void) {
     return _get_color_data(GDATAL_REGISTER);
 }
 
-/**
- * Reads and returns the blue channel data from the sensor.
- *
- * @return The 16-bit blue channel data.
- */
 uint16_t tcs3472x_get_blue_data(void) {
     return _get_color_data(BDATAL_REGISTER);
+}
+
+uint8_t _build_command_register(uint8_t reg_address, command_type_t cmd_type) {
+    command_register.bits.cmd = 1;
+    command_register.bits.type = cmd_type;
+    command_register.bits.addr_sf = reg_address;
+
+    return command_register.byte;
+}
+
+float _calc_atime_in_milliseconds(uint8_t atime) {
+	return (INTEGRATION_TIME_CONST-atime) * INTEGRATION_TIME_MULTIPLIER;
 }
 
 /**
