@@ -92,6 +92,19 @@ float tcs3472x_set_atime(float integration_time);
 float tcs3472x_get_atime(void);
 
 /**
+ * @brief Sets the low threshold value for the interrupt persistence filter.
+ *
+ * This function sets the low threshold value for the interrupt persistence
+ * filter of the TCS3472x color sensor. The interrupt will be triggered when
+ * the clear channel value falls below this threshold. The value must be
+ * provided as a 16-bit unsigned integer.
+ *
+ * @param value The low threshold value to set (0 to 65535).
+ * @return uint8_t Returns 0 if the operation was successful, or -1 otherwise.
+ */
+uint8_t tcs3472x_set_isr_threshold_reg_low(uint16_t value);
+
+/**
  * @brief Retrieves all color data from the sensor.
  * @param buff Pointer to a buffer where the color data will be stored.
  * Buffer must be large enough to hold 4 uint16_t values.

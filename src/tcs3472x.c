@@ -153,6 +153,34 @@ float tcs3472x_get_atime(void) {
     return atime_ms;
 }
 
+uint8_t tcs3472x_set_isr_threshold_reg_low(uint16_t value) {
+	uint8_t send_data[2] = {0};
+	uint8_t lower_byte = 0, upper_byte = 0;
+	lower_byte = value & 0x00FF;
+	upper_byte = (value >> 8) & 0x00FF;
+
+
+	command_register.byte = _build_command_register(AILTL_REGISTER, REPEAT_BYTE);
+
+    send_data[0] = command_register.byte;
+    send_data[1] = lower_byte;
+
+    if (tcs3472x_i2c_hal_write(send_data, 2) < 0) {
+        LOG_ERROR("Failed to set AILTL register.\r\n");
+        return -1;
+    }
+
+	command_register.byte = _build_command_register(AILTH_REGISTER, REPEAT_BYTE);
+
+    send_data[0] = command_register.byte;
+    send_data[1] = upper_byte;
+
+    if (tcs3472x_i2c_hal_write(send_data, 2) < 0) {
+        LOG_ERROR("Failed to set AILTH register.\r\n");
+        return -1;
+    }
+}
+
 void tcs3472x_get_all_colors_data(uint16_t *buff) {
     uint8_t data[8] = {0};  // 2 bytes for each color (clear, red, green, blue)
     uint16_t combined_data = 0;
